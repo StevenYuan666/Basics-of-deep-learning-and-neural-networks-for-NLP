@@ -648,6 +648,7 @@ if __name__ == "__main__":
     # 1.2
     batch = next(train_loader())
     y = batch["label"]
+    y = torch.tensor(y, dtype=torch.float)
 
     # 2.1
     embedding = torch.nn.Embedding(10000, 512)  # max_words, embedding_dim
@@ -664,25 +665,51 @@ if __name__ == "__main__":
     score = f1_score(y, y_pred)
 
     # 2.5
-    n_epochs = 5
+    n_epochs = 20
 
     embedding = torch.nn.Embedding(10000, 512)  # max_words, embedding_dim
     model = PooledLogisticRegression(embedding)
     optimizer = assign_optimizer(model, lr=3e-4, weight_decay=1e-2)
 
-    scores = train_loop(model, train_loader, valid_loader, optimizer, n_epochs, device)
+    scores_logistic = train_loop(model, train_loader, valid_loader, optimizer, n_epochs, device)
 
     # 3.1
-    n_epochs = 10
+    n_epochs = 20
     embedding = torch.nn.Embedding(10000, 512)  # max_words, embedding_dim
     model = ShallowNeuralNetwork(embedding, 512)
     optimizer = assign_optimizer(model, lr=3e-4, weight_decay=1e-2)
 
-    scores = train_loop(model, train_loader, valid_loader, optimizer, n_epochs, device)
+    scores_shallow = train_loop(model, train_loader, valid_loader, optimizer, n_epochs, device)
 
     # 3.2
     embedding = torch.nn.Embedding(10000, 512)  # max_words, embedding_dim
     model = DeepNeuralNetwork(embedding, 512, num_layers=2)
     optimizer = assign_optimizer(model, lr=3e-4, weight_decay=1e-2)
 
-    scores = train_loop(model, train_loader, valid_loader, optimizer, n_epochs, device)
+    scores_deep = train_loop(model, train_loader, valid_loader, optimizer, n_epochs, device)
+
+    # Import matplotlib and draw the plot, where the x-axis is the epoch number, and the y-axis is the F1 score.
+    import matplotlib.pyplot as plt
+
+    # Import numpy
+    import numpy as np
+
+    # Move the scores to cpu
+    scores_logistic = [score.cpu() for score in scores_logistic]
+    scores_shallow = [score.cpu() for score in scores_shallow]
+    scores_deep = [score.cpu() for score in scores_deep]
+
+    # Convert the scores (list of tensors) to numpy arrays
+    scores_logistic = np.array(scores_logistic)
+    scores_shallow = np.array(scores_shallow)
+    scores_deep = np.array(scores_deep)
+
+    plt.plot(range(1, n_epochs + 1), scores_logistic, label="Logistic")
+    plt.plot(range(1, n_epochs + 1), scores_shallow, label="Shallow")
+    plt.plot(range(1, n_epochs + 1), scores_deep, label="Deep")
+    plt.xlabel("Epoch")
+    plt.ylabel("F1 Score on Validation Set")
+    plt.legend()
+    plt.title("F1 Score on Validation Set vs. Epoch")
+    plt.savefig("f1_score.pdf", dpi=300)
+    plt.show()
